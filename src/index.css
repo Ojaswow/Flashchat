@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Full screen fix for mobile browsers */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  background-color: #121212;
+}
