@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setDoc, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteDoc } from "firebase/firestore";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { MessageSquare, Search, UserPlus, Settings, Send, Camera, UserCircle, LogOut, Trash2, ArrowLeft, Check, X } from 'lucide-react';
 
 const firebaseConfig = {
@@ -14,6 +15,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 const VBadge = () => (
   <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'linear-gradient(45deg, #ffd700, #b8860b)', border: '1.5px solid #fff', boxShadow: '0 0 5px #ffd700', fontSize: '9px', fontWeight: '900', color: 'black', marginLeft: '5px' }}>V</div>
@@ -51,7 +54,27 @@ function App() {
     }
   };
 
-  // Actions
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const userResult = result.user;
+      const uid = userResult.uid;
+      const userRef = doc(db, "users", uid);
+      const snap = await getDoc(userRef);
+
+      let userData;
+      if (snap.exists()) {
+        userData = snap.data();
+      } else {
+        userData = { id: uid, name: userResult.displayName, pic: userResult.photoURL, bio: 'Flash Chatting!', friends: [], requests: [] };
+        await setDoc(userRef, userData);
+      }
+      setUser(userData);
+    } catch (error) {
+      alert("Google Login Error: " + error.message);
+    }
+  };
+
   const sendInvite = async (targetId) => {
     await updateDoc(doc(db, "users", targetId), { requests: arrayUnion(user.id) });
   };
@@ -65,7 +88,6 @@ function App() {
     await updateDoc(doc(db, "users", user.id), { requests: arrayRemove(senderId) });
   };
 
-  // ADMIN POWER: DELETE USER
   const deleteUser = async (targetId) => {
     if (window.confirm(`King Ojas, are you sure you want to ban ${targetId}?`)) {
       await deleteDoc(doc(db, "users", targetId));
@@ -96,21 +118,27 @@ function App() {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <input placeholder="Username" value={authData.username} onChange={e => setAuthData({...authData, username: e.target.value})} required style={{ padding: '15px', borderRadius: '12px', background: '#0b141b', color: 'white', border: '1px solid #2c3943', outline: 'none' }} />
           <input type="password" placeholder="Password" value={authData.password} onChange={e => setAuthData({...authData, password: e.target.value})} required style={{ padding: '15px', borderRadius: '12px', background: '#0b141b', color: 'white', border: '1px solid #2c3943', outline: 'none' }} />
-          <button type="submit" style={{ padding: '15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold' }}>JOIN</button>
+          <button type="submit" style={{ padding: '15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>JOIN</button>
         </form>
+        
+        <div style={{ margin: '20px 0', color: '#4f5e6a', fontSize: '12px' }}>OR</div>
+
+        <button onClick={handleGoogleLogin} style={{ width: '100%', padding: '12px', background: '#fff', color: '#000', border: 'none', borderRadius: '12px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer' }}>
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="google" />
+          Continue with Google
+        </button>
       </div>
     </div>
   );
 
   return (
     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100dvh', width: '100vw', background: '#0b141b', color: 'white', overflow: 'hidden' }}>
-      
       <div style={{ width: isMobile ? '100%' : '70px', height: isMobile ? '65px' : '100%', background: '#081017', display: 'flex', flexDirection: isMobile ? 'row' : 'column', justifyContent: 'space-around', alignItems: 'center', borderRight: isMobile ? 'none' : '1px solid #232d36', borderTop: isMobile ? '1px solid #232d36' : 'none', order: isMobile ? 2 : 1, zIndex: 10 }}>
-        <MessageSquare onClick={() => {setActiveTab('chats'); setActiveChat(null);}} size={22} color={activeTab === 'chats' ? '#007bff' : '#4f5e6a'} />
-        <Search onClick={() => {setActiveTab('search'); setActiveChat(null);}} size={22} color={activeTab === 'search' ? '#007bff' : '#4f5e6a'} />
-        <UserPlus onClick={() => {setActiveTab('requests'); setActiveChat(null);}} size={22} color={activeTab === 'requests' ? '#007bff' : '#4f5e6a'} />
-        <Settings onClick={() => {setActiveTab('profile'); setActiveChat(null);}} size={22} color={activeTab === 'profile' ? '#007bff' : '#4f5e6a'} />
-        <LogOut onClick={() => setUser(null)} size={20} color="#ff4b4b" />
+        <MessageSquare onClick={() => {setActiveTab('chats'); setActiveChat(null);}} size={22} color={activeTab === 'chats' ? '#007bff' : '#4f5e6a'} style={{cursor:'pointer'}} />
+        <Search onClick={() => {setActiveTab('search'); setActiveChat(null);}} size={22} color={activeTab === 'search' ? '#007bff' : '#4f5e6a'} style={{cursor:'pointer'}} />
+        <UserPlus onClick={() => {setActiveTab('requests'); setActiveChat(null);}} size={22} color={activeTab === 'requests' ? '#007bff' : '#4f5e6a'} style={{cursor:'pointer'}} />
+        <Settings onClick={() => {setActiveTab('profile'); setActiveChat(null);}} size={22} color={activeTab === 'profile' ? '#007bff' : '#4f5e6a'} style={{cursor:'pointer'}} />
+        <LogOut onClick={() => setUser(null)} size={20} color="#ff4b4b" style={{cursor:'pointer'}} />
       </div>
 
       <div style={{ flex: 1, display: 'flex', order: 1, overflow: 'hidden', width: '100%' }}>
@@ -122,7 +150,6 @@ function App() {
                 <input placeholder="Search username..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: '100%', marginTop: '10px', padding: '8px 12px', background: '#1e293b', border: 'none', borderRadius: '8px', color: 'white', fontSize: '13px' }} />
               )}
             </div>
-            
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {activeTab === 'chats' && allUsers.filter(u => user.friends?.includes(u.id)).map(u => (
                 <div key={u.id} onClick={() => setActiveChat(u)} style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
@@ -135,8 +162,7 @@ function App() {
                   </div>
                 </div>
               ))}
-
-              {activeTab === 'search' && allUsers.filter(u => u.id !== user.id && u.id.includes(searchQuery.toLowerCase())).map(u => (
+              {activeTab === 'search' && allUsers.filter(u => u.id !== user.id && (u.id.toLowerCase().includes(searchQuery.toLowerCase()) || u.name.toLowerCase().includes(searchQuery.toLowerCase()))).map(u => (
                 <div key={u.id} style={{ padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                   <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                     <div style={{width:'35px', height:'35px', borderRadius:'50%', overflow:'hidden'}}>
@@ -145,17 +171,11 @@ function App() {
                     <span style={{color: u.id === 'mr..admin' ? '#ffd700' : 'white', fontSize:'14px'}}>{u.name} {u.id === 'mr..admin' && <VBadge />}</span>
                   </div>
                   <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                    {user.id === 'mr..admin' && u.id !== 'mr..admin' && (
-                      <Trash2 size={18} color="#ff4b4b" onClick={() => deleteUser(u.id)} style={{cursor:'pointer'}} />
-                    )}
-                    {!user.friends?.includes(u.id) && (
-                      u.requests?.includes(user.id) ? <span style={{fontSize:'11px', color:'#4f5e6a'}}>Invited</span> :
-                      <button onClick={() => sendInvite(u.id)} style={{background:'#007bff', color:'white', border:'none', padding:'5px 12px', borderRadius:'8px', fontSize:'11px'}}>Invite</button>
-                    )}
+                    {user.id === 'mr..admin' && u.id !== 'mr..admin' && <Trash2 size={18} color="#ff4b4b" onClick={() => deleteUser(u.id)} style={{cursor:'pointer'}} />}
+                    {!user.friends?.includes(u.id) && (u.requests?.includes(user.id) ? <span style={{fontSize:'11px', color:'#4f5e6a'}}>Invited</span> : <button onClick={() => sendInvite(u.id)} style={{background:'#007bff', color:'white', border:'none', padding:'5px 12px', borderRadius:'8px', fontSize:'11px', cursor:'pointer'}}>Invite</button>)}
                   </div>
                 </div>
               ))}
-
               {activeTab === 'requests' && allUsers.filter(u => user.requests?.includes(u.id)).map(u => (
                 <div key={u.id} style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', margin: '10px', borderRadius: '12px' }}>
                   <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
@@ -163,8 +183,8 @@ function App() {
                     <span style={{fontSize:'13px'}}>{u.name}</span>
                   </div>
                   <div style={{display:'flex', gap:'8px'}}>
-                    <button onClick={() => acceptInvite(u.id)} style={{background:'#28a745', border:'none', borderRadius:'50%', width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center'}}><Check size={16} color="white"/></button>
-                    <button onClick={() => ignoreInvite(u.id)} style={{background:'#ff4b4b', border:'none', borderRadius:'50%', width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center'}}><X size={16} color="white"/></button>
+                    <button onClick={() => acceptInvite(u.id)} style={{background:'#28a745', border:'none', borderRadius:'50%', width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Check size={16} color="white"/></button>
+                    <button onClick={() => ignoreInvite(u.id)} style={{background:'#ff4b4b', border:'none', borderRadius:'50%', width:'30px', height:'30px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><X size={16} color="white"/></button>
                   </div>
                 </div>
               ))}
@@ -192,7 +212,7 @@ function App() {
             ) : activeChat ? (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ padding: '12px 15px', borderBottom: '1px solid #232d36', display: 'flex', alignItems: 'center', gap: '12px', background: '#081017' }}>
-                  {isMobile && <ArrowLeft onClick={() => setActiveChat(null)} size={20} />}
+                  {isMobile && <ArrowLeft onClick={() => setActiveChat(null)} size={20} style={{cursor:'pointer'}} />}
                   <div style={{fontWeight:'bold', fontSize:'15px'}}>{activeChat.name}</div>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', padding: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -200,7 +220,7 @@ function App() {
                 </div>
                 <form onSubmit={(e) => { e.preventDefault(); if(!input.trim()) return; const cid = [user.id, activeChat.id].sort().join('_'); addDoc(collection(db, "chats", cid, "messages"), { text: input, createdAt: serverTimestamp(), senderId: user.id }); setInput(''); }} style={{ padding: '10px 15px', display: 'flex', gap: '10px', background:'#081017', alignItems: 'center' }}>
                   <input value={input} onChange={e => setInput(e.target.value)} placeholder="Type..." style={{ flex: 1, background: '#1e293b', border: 'none', padding: '10px 15px', borderRadius: '20px', color: 'white', outline:'none', fontSize: '14px' }} />
-                  <button type="submit" style={{ background: '#007bff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
+                  <button type="submit" style={{ background: '#007bff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor:'pointer' }}><Send size={16} /></button>
                 </form>
               </div>
             ) : <div style={{flex:1, display:'flex', justifyContent:'center', alignItems:'center', color:'#4f5e6a'}}>Pick someone, King Ojas!</div>}
